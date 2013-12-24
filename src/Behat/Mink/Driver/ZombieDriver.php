@@ -29,6 +29,7 @@ class ZombieDriver extends CoreDriver
     private $started = false;
     private $nativeRefs = array();
     private $server = null;
+    protected $proxy;
 
     /**
      * Constructor.
@@ -73,6 +74,24 @@ class ZombieDriver extends CoreDriver
 
         $this->server = new ZombieServer($params['host'], $params['port']);
     }
+
+    /**
+     * Set the proxy for this zombie browser to use.
+     *
+     * @param string $proxy http proxy
+     *
+     * @return ZombieDriver
+     */
+    public function setProxy($proxy)
+    {
+        if (substr($proxy, 0, 4) !== 'http') {
+            $proxy = 'http://'.$proxy;
+        }
+        $this->proxy = $proxy;
+
+        return $this;
+    }
+
 
     /**
      * Returns Zombie.js server.
@@ -150,11 +169,18 @@ JS;
      */
     public function visit($url)
     {
+        if (!empty($this->proxy)) {
+            $proxyjs = 'browser.proxy = "'. $this->proxy . '";' . "\n";
+        } else {
+            $proxyjs = '';
+        }
+
         // Cleanup cached references
         $this->nativeRefs = array();
 
         $js = <<<JS
 pointers = [];
+{$proxyjs}
 browser.visit("{$url}", function(err) {
   if (err) {
     stream.end(JSON.stringify(err.stack));
